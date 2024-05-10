@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embedded Content</title>
+<style>
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Hide scrollbar */
+}
+
+.wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allow mouse events to pass through */
+    z-index: -1; /* Ensure it's behind other content */
+}
+
+#container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#image {
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    opacity: 1;
+    z-index: 2; /* Ensure image is in front of trail */
+}
+
+.trail {
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    opacity: 0.5;
+    z-index: 1; /* Ensure trail is behind the image */
+    display: none;
+}
+
+@keyframes breathing {
+    0% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-1px);
+    }
+    100% {
+        transform: translateY(0);
+    }
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+    <div id="container">
+        <img id="image" src="https://lh3.googleusercontent.com/d/1kl2MfuGvGMLzCFMPChg70JiSlkDcA3_d" alt="Fading Image">
+    </div>
+</div>
+
+<script>
+const image = document.getElementById('image');
+const container = document.getElementById('container');
+let lastMouseX, lastMouseY;
+let isPursuing = false;
+const speedFactor = 0.05;
+let trailCount = 0;
+const trailSpawnInterval = 2000;
+const maxTrailCount = 3;
+let lastTrailTime = Date.now();
+const margin = 0.1; // Margin as a fraction of screen size
+const acceleration = 0.02; // Acceleration factor
+
+container.addEventListener('mousemove', handleMouseMove);
+window.addEventListener('scroll', handleScroll); // Listen for scroll events
+
+function handleMouseMove(event) {
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+    isPursuing = true;
+}
+
+function handleScroll() {
+    // User scrolled, accelerate image back into the safe zone
+    isPursuing = true;
+}
+
+function spawnTrail() {
+    if (trailCount < maxTrailCount) {
+        const trail = document.createElement('img');
+        trail.src = "https://lh3.googleusercontent.com/d/1gtZLlswu-AkrYwzTfEa0nsvME2OWzdB9";
+        trail.className = 'trail';
+        container.appendChild(trail);
+
+        const imageRect = image.getBoundingClientRect();
+        const offsetX = Math.random() * 21 - 10;
+        const offsetY = Math.random() * 21 - 10;
+        trail.style.left = (imageRect.left + offsetX - 1) + 'px';
+        trail.style.top = (imageRect.top + offsetY - 1) + 'px';
+
+        trail.style.display = 'block';
+        trailCount++;
+
+        setTimeout(() => {
+            container.removeChild(trail);
+            trailCount--;
+        }, trailSpawnInterval);
+    }
+}
+
+function moveTowards(targetX, targetY) {
+    const imageRect = image.getBoundingClientRect();
+    const centerX = imageRect.left + imageRect.width / 2;
+    const centerY = imageRect.top + imageRect.height / 2;
+
+    const distanceX = targetX - centerX;
+    const distanceY = targetY - centerY;
+
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    const moveDistanceX = distanceX * speedFactor;
+    const moveDistanceY = distanceY * speedFactor;
+
+    let newX = imageRect.left + moveDistanceX;
+    let newY = imageRect.top + moveDistanceY;
+
+    // Calculate margins based on screen size
+    const marginLeft = screenWidth * margin;
+    const marginRight = screenWidth * (1 - margin);
+    const marginTop = screenHeight * margin;
+    const marginBottom = screenHeight * (1 - margin);
+
+    // Accelerate if the image is outside the safe zone
+    if (newX < marginLeft) {
+        newX -= acceleration * (marginLeft - newX);
+    } else if (newX > marginRight - imageRect.width) {
+        newX += acceleration * (newX - (marginRight - imageRect.width));
+    }
+
+    if (newY < marginTop) {
+        newY -= acceleration * (marginTop - newY);
+    } else if (newY > marginBottom - imageRect.height) {
+        newY += acceleration * (newY - (marginBottom - imageRect.height));
+    }
+
+    image.style.left = newX + 'px';
+    image.style.top = newY + 'px';
+
+    if (!isPursuing) {
+        image.style.animation = 'breathing 2s infinite alternate';
+    } else {
+        image.style.animation = 'none';
+    }
+
+    if (Date.now() - lastTrailTime >= trailSpawnInterval) {
+        spawnTrail();
+        lastTrailTime = Date.now();
+    }
+}
+
+function animate() {
+    moveTowards(lastMouseX, lastMouseY);
+    isPursuing = false;
+    requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>
